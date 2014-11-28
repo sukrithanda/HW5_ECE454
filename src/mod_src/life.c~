@@ -1,0 +1,201 @@
+/*****************************************************************************
+ * life.c
+ * Parallelized and optimized implementation of the game of life resides here
+ ****************************************************************************/
+#include "life.h"
+
+/*****************************************************************************
+ * Helper function definitions
+ ****************************************************************************/
+void*
+parallel_game_of_life (void* data_packet)
+{
+    /* HINT: in the parallel decomposition, LDA may not be equal to
+       nrows! */
+	Data *data = (Data *) data_packet;
+	char* outboard = data->outboard; 
+	char* inboard = data->inboard;
+	const int nrows = data->nrows;
+	const int ncols = data->ncols;
+	const int gens_max = data->gens_max;
+	const int start = data->start;
+	const int end = data->end;
+
+	// int chunk = data->nrows / NTHREADS;
+   // int start = chunk * data->thread_id;
+    //int end = chunk * (data->thread_id + 1);
+
+    const int LDA = nrows;
+    int i, j, curgen;
+
+	for (curgen = 0; curgen < gens_max; curgen++)
+    	{
+            j=start;
+           int jrow = LDA * j;
+            for(i = 0; i < nrows ; i++)
+            {
+		// int inorth;//_i;
+                // int isouth;//_i;
+                // int jwest;//_j;
+                // int jeast;//_j;
+
+		/*if (i == 0)
+			inorth = nrows - 1;
+		else	
+			inorth = i -1;
+
+		if (i==nrows - 1 )
+			isouth = 0;
+		else
+			isouth = i +1;
+
+		if (j == 0)
+			jwest = (ncols -1) * LDA;
+		else
+			jwest = (LDA*j) - LDA;
+		
+		if (j == ncols -1 ) 
+			jeast = 0;
+		else
+			jeast = (LDA*j) + LDA;*/
+
+		const int inorth = (i == 0) ? nrows - 1 : (i-1);
+                const int isouth = (i == nrows - 1) ? 0 : (i+1);
+                const int jwest = (j==0) ? (ncols - 1) * LDA : jrow - LDA;
+                const int jeast = (j== ncols - 1) ? 0 : jrow + LDA;
+
+                const char neighbor_count =
+                    data->inboard[inorth+ jwest] +
+                    data->inboard[inorth+jrow] +
+                    data->inboard[inorth+ jeast] +
+                    data->inboard[i+ jwest] +
+                    data->inboard[i+jeast] +
+                    data->inboard[isouth+ jwest] +
+                    data->inboard[isouth+jrow] +
+                    data->inboard[isouth+ jeast];
+
+                data->outboard[i+jrow] = alivep (neighbor_count,  data->inboard[ i+ jrow]);
+            }
+        
+        
+        for (j=start+1; j < (end-1); j++)
+        {
+            
+                    i=0;
+                    int jr = LDA * j;
+                    const char neighbor_count =
+                    data->inboard[(LDA - 1)+ (jr - LDA)] +
+                    data->inboard[(LDA - 1)+jr] +
+                    data->inboard[(LDA - 1)+ (jr + LDA)] +
+                    data->inboard[i+ (jr - LDA)] +
+                    data->inboard[i+(jr + LDA)] +
+                    data->inboard[(i+1)+ (jr - LDA)] +
+                    data->inboard[(i+1)+jr] +
+                    data->inboard[(i+1)+ (jr + LDA)];
+
+                data->outboard[i+jr] = alivep (neighbor_count,  data->inboard[ i+ jr]);
+            
+            for (i = 1; i < (data->nrows-1) ; i++)
+            {               
+                    int jrow = LDA * j;
+                    const char neighbor_count =
+                    data->inboard[(i-1)+ (jrow - LDA)] +
+                    data->inboard[(i-1) + jrow] +
+                    data->inboard[(i-1) + (jrow + LDA)] +
+                    data->inboard[i + (jrow - LDA)] +
+                    data->inboard[i + (jrow + LDA)] +
+                    data->inboard[(i+1)+ (jrow - LDA)] +
+                    data->inboard[ (i+1)+ jrow] +
+                    data->inboard[ (i+1)+ (jrow + LDA)];
+
+               data->outboard[i+jrow] = alivep (neighbor_count, data->inboard[i+ jrow]);
+            }
+            {
+                    i=data->nrows-1;            
+                    int jr = LDA * j;
+                    const char neighbor_count =
+                    data->inboard[(i-1)+ (jr - LDA)] +
+                    data->inboard[(i-1)+jr] +
+                    data->inboard[(i-1)+ (jr + LDA)] +
+                    data->inboard[i+ (jr - LDA)] +
+                    data->inboard[i+(jr + LDA)] +
+                    data->inboard[(jr - LDA)] +
+                    data->inboard[jr] +
+                    data->inboard[(jr + LDA)];
+
+                data->outboard[i+jr] = alivep (neighbor_count,  data->inboard[ i+ jr]);
+            }
+        }
+        
+        
+            j=end-1;
+            for(i = 0; i < data->nrows ; i++)
+            {
+                int jrow = LDA * j;
+                const int inorth = (i == 0) ? (data->nrows - 1) : (i-1) ;
+                const int isouth = (i == data->nrows - 1) ? 0 : (i+1);
+                const int jwest = (j==0) ? (data->ncols - 1) * LDA : jrow - LDA;
+                const int jeast = (j== data->ncols - 1) ? 0 : jrow + LDA;
+
+                const char neighbor_count =
+                    data->inboard[inorth+ jwest] +
+                    data->inboard[inorth+jrow] +
+                    data->inboard[inorth+ jeast] +
+                    data->inboard[i+ jwest] +
+                    data->inboard[i+jeast] +
+                    data->inboard[isouth+ jwest] +
+                    data->inboard[isouth+jrow] +
+                    data->inboard[isouth+ jeast];
+
+                data->outboard[i+jrow] = alivep (neighbor_count,  data->inboard[ i+ jrow]);
+            }
+              
+	   // pthread_barrier_wait(data->sync);
+        SWAP_BOARDS( data->outboard, data->inboard );
+        pthread_barrier_wait(data->sync);
+
+    }
+    pthread_exit(NULL);
+    return data->inboard;
+}
+
+/*****************************************************************************
+ * Game of life implementation
+ ****************************************************************************/
+char*
+game_of_life (char* outboard, 
+	      char* inboard,
+	      const int nrows,
+	      const int ncols,
+	      const int gens_max)
+{
+	pthread_t thread_id[NTHREADS];
+	pthread_barrier_t sync;
+	Data *data = malloc(NTHREADS*sizeof(Data));
+
+	int i;
+
+	for (i = 0; i < NTHREADS; i++) {
+		data[i].outboard = outboard; 
+		data[i].inboard = inboard;
+		data[i].nrows = nrows;
+		data[i].ncols = ncols;
+		data[i].gens_max = gens_max;
+		data[i].start = i*ncols/NTHREADS;
+		data[i].end = (i+1)*ncols/NTHREADS;
+		data[i].sync = &sync;
+		data[i].thread_id = i;
+	}
+
+	pthread_barrier_init(&sync, NULL, NTHREADS);
+
+	for (i = 0; i < NTHREADS; i++) {
+		pthread_create(&thread_id[i], NULL, parallel_game_of_life, (void*) &data[i]);
+	}
+
+	for (i = 0; i < NTHREADS; i++) {
+		pthread_join(thread_id[i], NULL);
+	}
+
+	return data[0].inboard;
+}

@@ -20,6 +20,7 @@ typedef struct Data {
 	int start;
 	int end;
 	pthread_barrier_t *sync;
+	int thread_id;
 } Data;
 
 /**
