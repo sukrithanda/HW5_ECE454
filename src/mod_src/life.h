@@ -19,8 +19,10 @@ typedef struct Data {
 	int gens_max;
 	int start;
 	int end;
+	// int* count;
+	// pthread_mutex_t *sync_lock;
+	// pthread_cond_t *sync_cond;
 	pthread_barrier_t *sync;
-	int thread_id;
 } Data;
 
 /**

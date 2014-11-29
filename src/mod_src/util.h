@@ -21,8 +21,14 @@ mod (int x, int m)
 static inline char 
 alivep (char count, char state)
 {
-  return (! state && (count == (char) 3)) ||
-    (state && (count >= 2) && (count <= 3));
+	// return (! state && (count == (char) 3)) ||
+	// 	(state && (count >= 2) && (count <= 3));
+	if (state) {
+		return (count == 3 || count == 2);
+	} else {
+		return (count == 3);
+	}
+	return 0;
 }
 
 #endif /* _util_h */
